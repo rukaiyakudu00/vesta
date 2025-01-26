@@ -10,11 +10,8 @@
 (define-map balances principal uint) ;; User balances in the pool
 (define-map claims principal uint) ;; User claims
 
-;; Define events
-(define-data-var ClaimFiled (tuple (user principal) (amount uint)))
-(define-data-var ClaimApproved (tuple (user principal) (amount uint)))
-(define-data-var ClaimRejected (tuple (user principal) (amount uint)))
-(define-data-var PremiumPaid (tuple (user principal) (amount uint)))
+;; Define events using a map
+(define-map events principal (tuple (event-type (string-ascii 20)) (amount uint)))
 
 ;; Add funds to the insurance pool
 (define-public (pay-premium)
@@ -22,7 +19,8 @@
     (asserts! (> amount u0) (err "Amount must be greater than 0"))
     (map-set balances tx-sender (+ (default-to u0 (map-get? balances tx-sender)) amount))
     (var-set total-funds (+ (var-get total-funds) amount))
-    (ok (var-set PremiumPaid (tuple (user tx-sender) (amount amount))))
+    (map-set events tx-sender (tuple (event-type "PremiumPaid") (amount amount)))
+    (ok true)
   )
 )
 
@@ -32,7 +30,8 @@
     (asserts! (>= amount (var-get claim-threshold)) (err "Claim amount below threshold"))
     (asserts! (<= amount (default-to u0 (map-get? balances tx-sender))) (err "Insufficient balance"))
     (map-set claims tx-sender amount)
-    (ok (var-set ClaimFiled (tuple (user tx-sender) (amount amount))))
+    (map-set events tx-sender (tuple (event-type "ClaimFiled") (amount amount)))
+    (ok true)
   )
 )
 
@@ -44,7 +43,8 @@
     (map-delete claims user)
     (var-set total-funds (- (var-get total-funds) amount))
     (map-set balances user (- (default-to u0 (map-get? balances user)) amount))
-    (ok (var-set ClaimApproved (tuple (user user) (amount amount))))
+    (map-set events user (tuple (event-type "ClaimApproved") (amount amount)))
+    (ok true)
   )
 )
 
@@ -53,7 +53,8 @@
   (let ((amount (default-to u0 (map-get? claims user))))
     (asserts! (> amount u0) (err "No claim found for this user"))
     (map-delete claims user)
-    (ok (var-set ClaimRejected (tuple (user user) (amount amount))))
+    (map-set events user (tuple (event-type "ClaimRejected") (amount amount)))
+    (ok true)
   )
 )
 
@@ -65,4 +66,9 @@
 ;; Get total funds in the pool
 (define-read-only (get-total-funds)
   (ok (var-get total-funds))
+)
+
+;; Get event for a user
+(define-read-only (get-event (user principal))
+  (ok (map-get? events user))
 )
