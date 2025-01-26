@@ -82,6 +82,17 @@
   )
 )
 
+;; Update claim threshold (only admin can call this)
+(define-public (update-claim-threshold (new-threshold uint))
+  (begin
+    (asserts! (is-eq tx-sender admin-address) (err "Only admin can update claim threshold"))
+    (asserts! (> new-threshold u0) (err "Claim threshold must be greater than 0"))
+    (var-set claim-threshold new-threshold)
+    (map-set events tx-sender (tuple (event-type "ThresholdUpdated") (amount new-threshold)))
+    (ok true)
+  )
+)
+
 ;; Get user balance
 (define-read-only (get-balance (user principal))
   (ok (default-to u0 (map-get? balances user)))
@@ -105,4 +116,9 @@
 ;; Get current claim threshold
 (define-read-only (get-claim-threshold)
   (ok (var-get claim-threshold))
+)
+
+;; Get admin address
+(define-read-only (get-admin-address)
+  (ok admin-address)
 )
