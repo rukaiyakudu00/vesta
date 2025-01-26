@@ -5,6 +5,7 @@
 (define-data-var total-funds uint u0) ;; Total funds in the insurance pool
 (define-data-var premium-rate uint u100) ;; Premium rate (e.g., 100 microSTX per coverage)
 (define-data-var claim-threshold uint u500) ;; Minimum claim amount
+(define-constant admin-address 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM) ;; Admin address
 
 ;; Define user balances
 (define-map balances principal uint) ;; User balances in the pool
@@ -54,6 +55,29 @@
     (asserts! (> amount u0) (err "No claim found for this user"))
     (map-delete claims user)
     (map-set events user (tuple (event-type "ClaimRejected") (amount amount)))
+    (ok true)
+  )
+)
+
+;; Withdraw funds from the insurance pool
+(define-public (withdraw-funds (amount uint))
+  (let ((user-balance (default-to u0 (map-get? balances tx-sender))))
+    (asserts! (> amount u0) (err "Amount must be greater than 0"))
+    (asserts! (<= amount user-balance) (err "Insufficient balance"))
+    (map-set balances tx-sender (- user-balance amount))
+    (var-set total-funds (- (var-get total-funds) amount))
+    (map-set events tx-sender (tuple (event-type "WithdrawFunds") (amount amount)))
+    (ok true)
+  )
+)
+
+;; Update premium rate (only admin can call this)
+(define-public (update-premium-rate (new-rate uint))
+  (begin
+    (asserts! (is-eq tx-sender admin-address) (err "Only admin can update premium rate"))
+    (asserts! (> new-rate u0) (err "Premium rate must be greater than 0"))
+    (var-set premium-rate new-rate)
+    (map-set events tx-sender (tuple (event-type "PremiumRateUpdated") (amount new-rate)))
     (ok true)
   )
 )
