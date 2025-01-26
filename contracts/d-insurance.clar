@@ -96,3 +96,13 @@
 (define-read-only (get-event (user principal))
   (ok (map-get? events user))
 )
+
+;; Get current premium rate
+(define-read-only (get-premium-rate)
+  (ok (var-get premium-rate))
+)
+
+;; Get current claim threshold
+(define-read-only (get-claim-threshold)
+  (ok (var-get claim-threshold))
+)
